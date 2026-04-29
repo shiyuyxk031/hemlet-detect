@@ -1,0 +1,8 @@
+path: C:\Users\22082\Desktop\hamlet\YOLODataset
+train: train/images
+val: val/images
+
+names:
+  0: with_helmet
+  1: without_helmet
+  2: wheel

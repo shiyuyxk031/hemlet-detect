@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+venv/
+.env/
+
+# 数据集压缩包
+*.zip
+
+# 模型权重（大文件）
+*.pt
+
+# 训练输出
+runs/
+
+# 上传临时文件
+uploads/
+
+# IDE
+.idea/
+.vscode/
+
+# 系统
+Thumbs.db
+.DS_Store
+
+# 数据集图片/标注（太大不上传）
+YOLODataset/
+
+# Python缓存
+*.cache

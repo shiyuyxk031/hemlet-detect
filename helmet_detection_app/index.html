@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>头盔检测系统</title>
+<script src="vue.global.js"></script>
+<script src="axios.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI','Microsoft YaHei',sans-serif}
+body{background:#f0f2f5;height:100vh;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100vh}
+.header{background:linear-gradient(135deg,#1a2a3a,#2c3e50);color:#fff;padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;z-index:10}
+.header h1{font-size:20px;display:flex;align-items:center;gap:10px}
+.header h1 i{color:#3498db}
+.header-right{display:flex;align-items:center;gap:16px;font-size:13px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.green{background:#2ecc71}
+.dot.red{background:#e74c3c}
+.main{display:flex;flex:1;min-height:0;padding:12px;gap:12px}
+.left{flex:4;display:flex;flex-direction:column;gap:12px;min-width:0;overflow-y:auto}
+.right{flex:6;display:flex;flex-direction:column;gap:12px;min-width:0;overflow-y:auto}
+.box{background:#fff;border-radius:10px;box-shadow:0 1px 6px rgba(0,0,0,.07);display:flex;flex-direction:column;overflow:hidden}
+.box-hd{padding:10px 16px;font-size:14px;font-weight:600;color:#2c3e50;border-bottom:1px solid #eee;display:flex;align-items:center;gap:8px}
+.box-hd i{color:#3498db}
+.box-bd{padding:12px;flex:1;display:flex;flex-direction:column}
+.bg-video{width:100%;aspect-ratio:16/9;border-radius:8px;background:#1a1a2e;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.bg-video video{width:100%;height:100%;object-fit:cover}
+.bg-video .ph{color:#666;text-align:center}
+.bg-video .ph i{font-size:36px;color:#444;margin-bottom:4px}
+.vc{display:flex;gap:8px;margin-top:8px}
+.vc button{flex:1;padding:8px 0;border:none;border-radius:6px;font-size:13px;cursor:pointer;color:#fff;transition:.3s}
+.vc button:disabled{opacity:.5;cursor:not-allowed}
+.g{background:linear-gradient(135deg,#2ecc71,#27ae60)}
+.r{background:linear-gradient(135deg,#e74c3c,#c0392b)}
+.ur{display:flex;gap:10px}
+.ur button{display:flex;align-items:center;gap:6px;padding:10px 18px;background:linear-gradient(135deg,#3498db,#2980b9);color:#fff;border:none;border-radius:8px;font-size:14px;cursor:pointer;white-space:nowrap;transition:.3s}
+.ur button:hover{box-shadow:0 4px 12px rgba(52,152,219,.4)}
+.dd{border:2px dashed #ddd;border-radius:8px;padding:16px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80px;flex:1;transition:.3s}
+.dd:hover,.dd.dg{border-color:#3498db;background:#eaf4fd}
+.dd i{font-size:28px;color:#bbb}
+.fi{font-size:12px;color:#888;margin-top:6px;padding:6px 10px;background:#f8f9fa;border-radius:6px}
+.pv{width:100%;aspect-ratio:16/9;border-radius:8px;background:#f0f2f5;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.pv img{max-width:100%;max-height:100%;object-fit:contain}
+.pv .ph{color:#bbb;text-align:center}
+.pv .ph i{font-size:36px}
+.info{border-left:4px solid #95a5a6;background:#f8f9fa;margin-top:8px;padding:12px;border-radius:8px;font-size:13px;line-height:1.8}
+.info.green{border-left-color:#2ecc71;background:#f0faf4}
+.info.red{border-left-color:#e74c3c;background:#fdf0ef}
+.lg{background:#1a1a2e;color:#a8e6cf;border-radius:6px;padding:10px;font-family:'Courier New',monospace;font-size:11px;line-height:1.6;flex:1;overflow-y:auto;min-height:100px;max-height:180px;white-space:pre-wrap}
+.lg::-webkit-scrollbar{width:4px;background:#111}
+.lg::-webkit-scrollbar-thumb{background:#444;border-radius:2px}
+.mask{position:absolute;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:8px;z-index:5}
+.spin{width:32px;height:32px;border:3px solid #e0e0e0;border-top:3px solid #3498db;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:6px}
+@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}
+.pr{position:relative}
+</style>
+</head>
+<body>
+<div id="app">
+<div class="header">
+<h1><i class="fas fa-helmet-safety"></i> 头盔检测系统</h1>
+<div class="header-right"><span><span class="dot" :class="dotCls"></span> {{ statusText }}</span><span><i class="fas fa-clock"></i> {{ clock }}</span></div>
+</div>
+
+<div class="main">
+<div class="left">
+<div class="box" style="flex:3">
+<div class="box-hd"><i class="fas fa-video"></i> 摄像头检测</div>
+<div class="box-bd">
+<div class="bg-video pr">
+<video ref="cam" autoplay playsinline v-show="camOn"></video>
+<div class="ph" v-if="!camOn"><i class="fas fa-camera"></i><p>摄像头未启动</p></div>
+</div>
+<div class="vc"><button class="g" @click="startCam" :disabled="camOn"><i class="fas fa-play"></i> 启动</button><button class="r" @click="stopCam" :disabled="!camOn"><i class="fas fa-stop"></i> 停止</button></div>
+</div>
+</div>
+<div class="box">
+<div class="box-hd"><i class="fas fa-upload"></i> 图片上传</div>
+<div class="box-bd">
+<div class="ur"><button @click="selFile"><i class="fas fa-image"></i> 选择图片</button><input type="file" ref="fi" @change="onFile" accept="image/*" style="display:none"><div class="dd" :class="{dg:drag}" @dragover.prevent="drag=true" @dragleave.prevent="drag=false" @drop.prevent="onDrop"><i class="fas fa-cloud-upload-alt"></i><p style="font-size:13px;color:#888">拖拽图片到此处</p></div></div>
+<div class="fi" v-if="curFile">文件: {{ curFile.name }} ({{ sizeStr(curFile.size) }})</div>
+</div>
+</div>
+</div>
+
+<div class="right">
+<div class="box" style="flex:7">
+<div class="box-hd"><i class="fas fa-chart-bar"></i> 检测结果</div>
+<div class="box-bd">
+<div class="pv pr">
+<img :src="imgSrc" v-if="imgSrc">
+<div class="ph" v-if="!imgSrc&&!busy"><i class="fas fa-image"></i><p>等待检测...</p></div>
+<div class="mask" v-if="busy"><div class="spin"></div><p style="color:#555;font-size:14px">检测中...</p></div>
+</div>
+<div class="info" :class="{green:hasHelmet===true,red:hasHelmet===false}" v-if="hasHelmet!==null"><div v-html="resultHtml"></div></div>
+<div class="info" v-if="hasHelmet===null&&!busy"><div style="color:#999"><i class="fas fa-info-circle"></i> 请上传图片或开启摄像头</div></div>
+</div>
+</div>
+<div class="box" style="flex:3">
+<div class="box-hd"><i class="fas fa-terminal"></i> 日志<span style="margin-left:auto;font-weight:normal"><button @click="clearLog" style="background:none;border:none;color:#999;cursor:pointer;font-size:12px"><i class="fas fa-trash-alt"></i> 清空</button></span></div>
+<div class="box-bd" style="padding:8px"><div class="lg" ref="logBox">{{ log }}</div></div>
+</div>
+</div>
+</div>
+</div>
+
+<script>
+const{createApp,ref,onMounted,onBeforeUnmount,nextTick}=Vue;
+createApp({setup(){
+const fi=ref(null),cam=ref(null),logBox=ref(null);
+const curFile=ref(null),imgSrc=ref(''),resultHtml=ref(''),hasHelmet=ref(null),busy=ref(false);
+const camOn=ref(false),drag=ref(false);
+const log=ref(''),clock=ref(''),dotCls=ref('red'),statusText=ref('后端未连接');
+let ms=null,ci=null;
+
+const addLog=m=>{log.value+=`[${new Date().toLocaleTimeString()}] ${m}\n`;nextTick(()=>{logBox.value&&(logBox.value.scrollTop=logBox.value.scrollHeight)})};
+const clearLog=()=>{log.value='';addLog('已清空')};
+const sizeStr=b=>{if(!b)return'0B';const k=1024,u=['B','KB','MB','GB'];const i=Math.floor(Math.log(b)/Math.log(k));return(b/Math.pow(k,i)).toFixed(1)+u[i]};
+
+const selFile=()=>fi.value?.click();
+const onFile=e=>{e.preventDefault();const f=e.target.files[0];if(f)doFile(f);e.target.value=''};
+const onDrop=e=>{e.preventDefault();drag.value=false;const f=e.dataTransfer.files[0];if(f)doFile(f)};
+const doFile=f=>{
+if(!f.type.startsWith('image/'))return;const x=f.name.split('.').pop().toLowerCase();
+if(!['png','jpg','jpeg','gif'].includes(x))return;if(f.size>16<<20)return;
+curFile.value=f;addLog(`选择: ${f.name}`);
+upload(f,false)};
+
+const upload=async(f,isCam)=>{
+busy.value=!isCam;hasHelmet.value=null;dotCls.value='red';statusText.value='检测中';
+const fd=new FormData();fd.append('file',f,isCam?'cam.jpg':f.name);
+try{
+addLog('请求中...');const r=await axios.post('http://127.0.0.1:5000/predict',fd,{headers:{'Content-Type':'multipart/form-data'},timeout:6e4});
+addLog('检测成功');showResult(r.data)
+}catch(e){addLog(`失败: ${e.message}`);if(e.response)addLog(`状态码: ${e.response.status}`)}
+finally{busy.value=false;dotCls.value='green';statusText.value='已连接'}};
+
+const showResult=d=>{
+if(!d.success)return;const p=(d.confidence*100).toFixed(1);hasHelmet.value=d.has_helmet;
+imgSrc.value=d.image_base64?`data:image/jpeg;base64,${d.image_base64}`:'';
+resultHtml.value=d.has_helmet?`<p style="color:#2ecc71;font-weight:bold;font-size:15px">✅ 检测到安全帽</p><p>置信度: <strong>${p}%</strong></p><p>状态: 安全</p>`:`<p style="color:#e74c3c;font-weight:bold;font-size:15px">❌ 未检测到安全帽</p><p>置信度: <strong>${p}%</strong></p><p>状态: 危险</p>`};
+
+const startCam=async()=>{
+try{ms=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}}});if(cam.value)cam.value.srcObject=ms;camOn.value=true;addLog('摄像头已启动');
+ci=setInterval(()=>{if(!camOn.value||!cam.value)return;const c=document.createElement('canvas');c.width=cam.value.videoWidth||640;c.height=cam.value.videoHeight||480;c.getContext('2d').drawImage(cam.value,0,0,c.width,c.height);c.toBlob(b=>{b&&upload(b,true)},'image/jpeg',.85)},400)}
+catch(e){addLog(`摄像头启动失败: ${e.message}`)}};
+const stopCam=()=>{ms&&(ms.getTracks().forEach(t=>t.stop()),ms=null);ci&&(clearInterval(ci),ci=null);camOn.value=false;addLog('摄像头已停止')};
+
+setInterval(()=>{clock.value=new Date().toLocaleTimeString()},1e3);
+const checkHealth=async()=>{
+addLog('检查后端连接...');
+try{await axios.get('http://127.0.0.1:5000/health',{timeout:3e3});dotCls.value='green';statusText.value='已连接';addLog('后端连接成功')}
+catch{addLog('后端未连接')}
+};
+onMounted(()=>{clock.value=new Date().toLocaleTimeString();addLog('系统已启动');setTimeout(checkHealth,500)});
+onBeforeUnmount(()=>{stopCam()});
+
+return{fi,cam,logBox,curFile,imgSrc,resultHtml,hasHelmet,busy,camOn,drag,log,clock,dotCls,statusText,
+selFile,onFile,onDrop,sizeStr,startCam,stopCam,clearLog}
+}}).mount('#app');
+</script>
+</body>
+</html>

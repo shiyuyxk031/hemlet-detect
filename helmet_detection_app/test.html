@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>头盔检测 - 测试</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="app">
+        <h1>头盔检测测试</h1>
+        <p>状态: {{ status }}</p>
+        <p>结果: {{ resultText }}</p>
+        <input type="file" @change="uploadFile" accept="image/*">
+        <div style="white-space:pre-wrap;background:#1a1a2e;color:#a8e6cf;padding:10px;margin-top:10px;">{{ logs }}</div>
+    </div>
+
+    <script>
+        const { createApp, ref } = Vue;
+
+        createApp({
+            setup() {
+                const status = ref('就绪');
+                const resultText = ref('等待检测...');
+                const logs = ref('');
+
+                const addLog = (msg) => {
+                    logs.value += `[${new Date().toLocaleTimeString()}] ${msg}\n`;
+                };
+
+                const uploadFile = async (event) => {
+                    addLog('开始上传...');
+                    status.value = '检测中...';
+
+                    const file = event.target.files[0];
+                    if (!file) {
+                        addLog('没有文件');
+                        return;
+                    }
+
+                    addLog(`文件名: ${file.name}, 大小: ${file.size}`);
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    try {
+                        addLog('发送POST请求...');
+                        const res = await axios.post('http://127.0.0.1:5000/predict', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                            timeout: 30000
+                        });
+                        addLog(`成功! 状态码: ${res.status}`);
+                        addLog(`响应: ${JSON.stringify(res.data)}`);
+                        status.value = '完成';
+                        resultText.value = JSON.stringify(res.data);
+                    } catch (err) {
+                        addLog(`失败: ${err.message}`);
+                        if (err.response) {
+                            addLog(`HTTP ${err.response.status}: ${JSON.stringify(err.response.data)}`);
+                        }
+                        status.value = '错误';
+                        resultText.value = err.message;
+                    }
+                };
+
+                addLog('页面已加载');
+
+                return { status, resultText, logs, uploadFile };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
